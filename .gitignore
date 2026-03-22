@@ -1,0 +1,13 @@
+# JetBrains IDEs (IntelliJ IDEA, DataGrip, etc.)
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# PostgreSQL
+*.log
+*.tmp
