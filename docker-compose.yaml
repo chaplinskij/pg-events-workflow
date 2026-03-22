@@ -1,0 +1,54 @@
+version: '3.8'
+
+services:
+  postgres_pub:
+    build: ./publisher
+    container_name: pg_pub
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: app
+    ports:
+      - "5433:5432"
+    volumes:
+      - ./publisher:/docker-entrypoint-initdb.d
+    command: >
+      postgres
+      -c shared_preload_libraries=pg_cron
+      -c cron.database_name=app
+      -c wal_level=logical
+      -c max_replication_slots=10
+      -c max_wal_senders=10
+
+  postgres_sub:
+    image: postgres:17
+    container_name: pg_sub
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: app
+    ports:
+      - "5434:5432"
+    volumes:
+      - ./subscriber/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+
+  subscriber_init:
+    image: postgres:17
+    container_name: sub_init
+    depends_on:
+      - postgres_pub
+      - postgres_sub
+    environment:
+      PGPASSWORD: postgres
+    volumes:
+      - ./subscriber/init.sql:/scripts/init.sql
+    entrypoint: >
+      bash -c "
+      echo 'Waiting for publisher and subscriber...';
+      until pg_isready -h pg_pub -U postgres; do sleep 1; done;
+      until pg_isready -h pg_sub -U postgres; do sleep 1; done;
+
+      echo 'Creating subscription...';
+      psql -h pg_sub -U postgres -d app -v ON_ERROR_STOP=0 -f /scripts/init.sql;
+      echo 'Subscription created';
+      "

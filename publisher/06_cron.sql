@@ -1,7 +1,5 @@
 create extension if not exists pg_cron;
 
-call generate_events_for_period('2026-01-01'::date, '2026-03-31'::date, 300000);
-
 select cron.schedule(
                'insert_event_5_sec',
                '5 seconds',
